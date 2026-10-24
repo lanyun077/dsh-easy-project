@@ -1,0 +1,5 @@
+# dsh-easy-project bundle patch — declares this plugin row for the composition.
+# The profile (or the dsh CLI) resolves `dsh-easy-project` from node_modules.
+- insert:
+    - id: project
+      name: 'dsh-easy-project'

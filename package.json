@@ -1,0 +1,55 @@
+{
+  "name": "dsh-easy-project",
+  "version": "0.2.2",
+  "description": "DeepSeek Harness (dsh) 的「项目」插件：会话按项目分组、一个项目挂多个文件夹、新建会话可同时勾选多个文件夹、项目级共享记忆与指令。不改内核，纯插件实现。",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "test": "node test/store.test.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "project",
+    "workspace",
+    "sessions",
+    "memory"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lanyun077/dsh-easy-projcet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lanyun077/dsh-easy-projcet/issues"
+  },
+  "engines": {
+    "node": ">=20.18"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "react": "^18.2.0"
+  },
+  "files": [
+    "index.js",
+    "store.js",
+    "client.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ]
+}
