@@ -32,10 +32,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lanyun077/dsh-easy-projcet.git"
+    "url": "git+https://github.com/lanyun077/dsh-easy-project.git"
   },
   "bugs": {
-    "url": "https://github.com/lanyun077/dsh-easy-projcet/issues"
+    "url": "https://github.com/lanyun077/dsh-easy-project/issues"
   },
   "engines": {
     "node": ">=20.18"

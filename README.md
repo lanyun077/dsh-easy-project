@@ -28,7 +28,7 @@ dsh 原生的侧栏会话列表按「工作区」（= 单个文件夹）分组�
 前置：已装 dsh（`dsh web` 能跑起来），Node ≥ 20。
 
 ```sh
-dsh plugin --profile web add github:lanyun077/dsh-easy-projcet
+dsh plugin --profile web add github:lanyun077/dsh-easy-project
 ```
 
 `dsh plugin add` 会自动把插件行写进 profile；如果需要手动，在你的 profile `cordis.patch.yml` 里加：
