@@ -1,1 +1,1 @@
-# dsh-easy-projcet
+# dsh-easy-project
