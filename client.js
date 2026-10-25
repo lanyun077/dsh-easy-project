@@ -75,6 +75,9 @@ window.__ModuleLoader__.load({
       ".dp-groupName{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-primary);font-family:var(--dsw-font-markdown-code-block-small,monospace);font-size:12px;cursor:pointer}" +
       ".dp-groupCount{flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary)}" +
       ".dp-groupChildren{display:flex;flex-direction:column;gap:2px;padding:6px 6px 6px 30px;border-top:1px solid var(--dsw-alias-border-l1)}" +
+      ".dp-manualRow{display:flex;gap:6px;align-items:center}" +
+      ".dp-manualInput{flex:1;min-width:0}" +
+      ".dp-manualHint{margin:0;font-size:11px;color:var(--dsw-alias-label-tertiary)}" +
       "/* --- context menu --- */" +
       ".psv-menu{position:fixed;z-index:1400;min-width:190px;max-height:70vh;overflow-y:auto;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;box-shadow:var(--dsw-shadow-lv3);padding:4px;display:flex;flex-direction:column;gap:1px;font-family:var(--dsw-font-family)}" +
       ".psv-menuItem{display:flex;align-items:center;padding:6px 10px;border-radius:6px;cursor:pointer;color:var(--dsw-alias-label-primary);background:none;border:none;text-align:left;font-size:12.5px;font-family:inherit;white-space:nowrap}" +
@@ -361,22 +364,41 @@ window.__ModuleLoader__.load({
       var setErr = errState[1];
       var busy = busyState[0];
       var setBusy = busyState[1];
+      var manualState = react.useState("");
+      var manual = manualState[0];
+      var setManual = manualState[1];
+
+      var PICKER_FAIL_HINT = "无法打开系统选择器（远程访问或无桌面环境时常见），请直接输入路径。";
+
+      function adopt(ws) {
+        setFolders(function (prev) {
+          if (prev.some(function (f) { return f.path === ws.path; })) return prev;
+          return prev.concat([{ path: ws.path, workspaceId: ws.workspaceId }]);
+        });
+      }
 
       function addFolder() {
         setPicking(true);
         setErr(null);
         props.workspaces.pickDirectory().then(function (path) {
-          if (path == null) {
-            setPicking(false);
-            return;
-          }
-          return props.workspaces.create({ path: path }).then(function (ws) {
-            setFolders(function (prev) {
-              if (prev.some(function (f) { return f.path === ws.path; })) return prev;
-              return prev.concat([{ path: ws.path, workspaceId: ws.workspaceId }]);
-            });
-            setPicking(false);
-          });
+          setPicking(false);
+          if (path == null) return;
+          return props.workspaces.create({ path: path }).then(adopt);
+        }).catch(function (e) {
+          setPicking(false);
+          setErr(PICKER_FAIL_HINT + "（" + String((e && e.message) || e) + "）");
+        });
+      }
+
+      function addManualPath() {
+        var p = manual.trim();
+        if (p === "") return;
+        setPicking(true);
+        setErr(null);
+        props.workspaces.create({ path: p }).then(function (ws) {
+          adopt(ws);
+          setManual("");
+          setPicking(false);
         }).catch(function (e) {
           setPicking(false);
           setErr(String((e && e.message) || e));
@@ -415,7 +437,10 @@ window.__ModuleLoader__.load({
                 h("span", { className: "dp-folderPath" }, f.path),
                 h("button", { type: "button", className: "dp-link", onClick: function () { removeFolder(i); } }, "移除"));
             }),
-            h("button", { type: "button", className: "dp-btn", onClick: addFolder, disabled: picking }, picking ? "选择中…" : "＋ 添加文件夹")
+            h("button", { type: "button", className: "dp-btn", onClick: addFolder, disabled: picking }, picking ? "选择中…" : "＋ 添加文件夹"),
+            h("div", { className: "dp-manualRow" },
+              h("input", { className: "dp-input dp-manualInput", placeholder: "选择器打不开？输入宿主机上的文件夹绝对路径", value: manual, onChange: function (e) { setManual(e.target.value); } }),
+              h("button", { type: "button", className: "dp-btn", onClick: addManualPath, disabled: picking || manual.trim() === "" }, "添加"))
           ),
           err ? h("p", { className: "dp-error" }, err) : null,
           h("div", { className: "dp-modalFooter" },
@@ -605,6 +630,9 @@ window.__ModuleLoader__.load({
       var setBusy = busyState[1];
       var err = errState[0];
       var setErr = errState[1];
+      var manualState = react.useState("");
+      var manual = manualState[0];
+      var setManual = manualState[1];
 
       var checked = {};
       folders.forEach(function (f) {
@@ -622,20 +650,38 @@ window.__ModuleLoader__.load({
       var chosen = folders.filter(function (f) { return checked[f.path]; });
       var primary = chosen[0];
 
+      var PICKER_FAIL_HINT = "无法打开系统选择器（远程访问或无桌面环境时常见），请直接输入路径。";
+
+      function adopt(updated) {
+        setFolders((updated && updated.folders) || []);
+      }
+
       function addFolder() {
         setAdding(true);
         setErr(null);
         props.workspaces.pickDirectory().then(function (path) {
-          if (path == null) {
-            setAdding(false);
-            return;
-          }
+          setAdding(false);
+          if (path == null) return;
           return props.workspaces.create({ path: path }).then(function (ws) {
             return props.api.addFolder(project.id, { path: ws.path, workspaceId: ws.workspaceId });
-          }).then(function (updated) {
-            setFolders((updated && updated.folders) || []);
-            setAdding(false);
-          });
+          }).then(adopt);
+        }).catch(function (e) {
+          setAdding(false);
+          setErr(PICKER_FAIL_HINT + "（" + String((e && e.message) || e) + "）");
+        });
+      }
+
+      function addManualPath() {
+        var p = manual.trim();
+        if (p === "") return;
+        setAdding(true);
+        setErr(null);
+        props.workspaces.create({ path: p }).then(function (ws) {
+          return props.api.addFolder(project.id, { path: ws.path, workspaceId: ws.workspaceId });
+        }).then(function (updated) {
+          adopt(updated);
+          setManual("");
+          setAdding(false);
         }).catch(function (e) {
           setAdding(false);
           setErr(String((e && e.message) || e));
@@ -685,7 +731,10 @@ window.__ModuleLoader__.load({
                   isPrimary ? h("span", { className: "dp-pickMeta" }, "会话工作目录") : null);
               }),
               h("div", { className: "dp-pickRow" },
-                h("button", { type: "button", className: "dp-btn", onClick: addFolder, disabled: adding || busy }, adding ? "选择中…" : "＋ 添加文件夹")))),
+                h("button", { type: "button", className: "dp-btn", onClick: addFolder, disabled: adding || busy }, adding ? "选择中…" : "＋ 添加文件夹")),
+              h("div", { className: "dp-manualRow" },
+                h("input", { className: "dp-input dp-manualInput", placeholder: "选择器打不开？输入宿主机上的文件夹绝对路径", value: manual, onChange: function (e) { setManual(e.target.value); } }),
+                h("button", { type: "button", className: "dp-btn", onClick: addManualPath, disabled: adding || busy || manual.trim() === "" }, "添加")))),
           primary !== undefined ? h("p", { className: "psv-cwdHint" }, "会话工作目录：" + primary.path + "；其余勾选的文件夹同属项目，会话可跨文件夹读取。") : null,
           err ? h("p", { className: "dp-error" }, err) : null,
           h("div", { className: "dp-modalFooter" },
@@ -693,6 +742,71 @@ window.__ModuleLoader__.load({
             h("button", { type: "button", className: "dp-btnPrimary", onClick: submit, disabled: busy || primary === undefined }, busy ? "创建中…" : "创建会话"))
         )
       );
+    }
+
+    // ── add-folder modal (picker + manual path fallback) ──────────────────
+    function AddFolderModal(props) {
+      var project = props.project;
+      var manualState = react.useState("");
+      var pickingState = react.useState(false);
+      var busyState = react.useState(false);
+      var errState = react.useState(null);
+      var manual = manualState[0];
+      var setManual = manualState[1];
+      var picking = pickingState[0];
+      var setPicking = pickingState[1];
+      var busy = busyState[0];
+      var setBusy = busyState[1];
+      var err = errState[0];
+      var setErr = errState[1];
+
+      function commit(path) {
+        setBusy(true);
+        setErr(null);
+        return props.workspaces.create({ path: path }).then(function (ws) {
+          return props.api.addFolder(project.id, { path: ws.path, workspaceId: ws.workspaceId });
+        }).then(function () {
+          setBusy(false);
+          props.onDone();
+        });
+      }
+
+      function pick() {
+        setPicking(true);
+        setErr(null);
+        props.workspaces.pickDirectory().then(function (path) {
+          setPicking(false);
+          if (path == null) return;
+          return commit(path).catch(function (e) {
+            setBusy(false);
+            setErr(String((e && e.message) || e));
+          });
+        }).catch(function (e) {
+          setPicking(false);
+          setErr("无法打开系统选择器（远程访问或无桌面环境时常见），请直接输入路径。（" + String((e && e.message) || e) + "）");
+        });
+      }
+
+      function submitManual() {
+        var p = manual.trim();
+        if (p === "") return;
+        commit(p).catch(function (e) {
+          setBusy(false);
+          setErr(String((e && e.message) || e));
+        });
+      }
+
+      return h("div", { className: "dp-backdrop", onClick: function (e) { if (e.target === e.currentTarget && !busy) props.onCancel(); } },
+        h("div", { className: "dp-modal" },
+          h("h3", { className: "dp-modalTitle" }, "向项目「" + project.name + "」添加文件夹"),
+          h("button", { type: "button", className: "dp-btnPrimary", onClick: pick, disabled: picking || busy }, picking ? "选择中…" : "浏览选择文件夹"),
+          h("p", { className: "dp-manualHint" }, "选择器打不开时，直接输入宿主机上的文件夹绝对路径："),
+          h("div", { className: "dp-manualRow" },
+            h("input", { className: "dp-input dp-manualInput", placeholder: "例如 D:\\work\\backend 或 /home/user/repo", value: manual, autoFocus: true, onChange: function (e) { setManual(e.target.value); } }),
+            h("button", { type: "button", className: "dp-btnPrimary", onClick: submitManual, disabled: busy || manual.trim() === "" }, busy ? "添加中…" : "添加")),
+          err ? h("p", { className: "dp-error" }, err) : null,
+          h("div", { className: "dp-modalFooter" },
+            h("button", { type: "button", className: "dp-btn", onClick: props.onCancel, disabled: busy }, "关闭"))));
     }
 
     // ── sidebar: project-grouped session list with row-level operations ───
@@ -760,19 +874,6 @@ window.__ModuleLoader__.load({
         });
       }
 
-      function addFolderTo(project) {
-        workspaces.pickDirectory().then(function (path) {
-          if (path == null) return;
-          return workspaces.create({ path: path }).then(function (ws) {
-            return api.addFolder(project.id, { path: ws.path, workspaceId: ws.workspaceId });
-          }).then(function () {
-            refresh();
-          });
-        }).catch(function (e) {
-          setErr(String((e && e.message) || e));
-        });
-      }
-
       function openText(project, field, title, hint) {
         api.detail(project.id).then(function (d) {
           setModal({ type: "text", id: project.id, field: field, title: title, hint: hint, value: d[field] || "" });
@@ -786,7 +887,7 @@ window.__ModuleLoader__.load({
         setMenu({
           x: x, y: y, items: [
             { label: "新建会话…（可多选文件夹）", onClick: function () { setModal({ type: "newSession", projectId: project.id }); } },
-            { label: "添加文件夹…", onClick: function () { addFolderTo(project); } },
+            { label: "添加文件夹…", onClick: function () { setModal({ type: "addFolder", projectId: project.id }); } },
             { label: "添加会话到项目…", onClick: function () { setModal({ type: "sessionPicker", id: project.id }); } },
             { sep: true },
             { label: "重命名…", onClick: function () { setModal({ type: "edit", id: project.id, name: project.name, description: project.description }); } },
@@ -976,6 +1077,17 @@ window.__ModuleLoader__.load({
           },
           onCancel: function () { setModal(null); },
         });
+      } else if (modal !== null && modal.type === "addFolder") {
+        var afProject = projects.find(function (p) { return p.id === modal.projectId; });
+        if (afProject !== undefined) {
+          modalEl = h(AddFolderModal, {
+            project: afProject,
+            api: api,
+            workspaces: workspaces,
+            onDone: function () { setModal(null); refresh(); },
+            onCancel: function () { setModal(null); },
+          });
+        }
       }
 
       return h("div", { "data-dsh-easy-projects-list": true },
