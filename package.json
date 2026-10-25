@@ -1,6 +1,6 @@
 {
   "name": "dsh-easy-project",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "DeepSeek Harness (dsh) 的「项目」插件：会话按项目分组、一个项目挂多个文件夹、新建会话可同时勾选多个文件夹、项目级共享记忆与指令。不改内核，纯插件实现。",
   "type": "module",
   "main": "index.js",

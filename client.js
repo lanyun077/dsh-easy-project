@@ -87,8 +87,9 @@ window.__ModuleLoader__.load({
       "/* --- sidebar project view --- */" +
       "[data-dsh-easy-projects-list]{display:flex;flex-direction:column;flex:1;min-height:0}" +
       "[data-dsh-easy-projects-list] .psv-body{display:flex;flex:1;min-height:0;flex-direction:column;gap:2px;overflow-y:auto;padding-right:2px}" +
-      "[data-dsh-frame]:not([data-sidebar-collapsed]) [class*='regionArea'] > :not([data-dsh-easy-projects-list]){display:none!important}" +
+      "html:not([data-dsh-projects-narrow]) [data-dsh-frame]:not([data-sidebar-collapsed]) [class*='regionArea'] > :not([data-dsh-easy-projects-list]){display:none!important}" +
       "[data-dsh-frame][data-sidebar-collapsed] [data-dsh-easy-projects-list]{display:none}" +
+      "html[data-dsh-projects-narrow] [data-dsh-easy-projects-list]{display:none!important}" +
       ".psv-head{display:flex;align-items:center;gap:6px;padding:2px 6px 6px;flex:none}" +
       ".psv-headLabel{font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--dsw-alias-label-tertiary)}" +
       ".psv-headBtn{margin-left:auto;padding:2px 9px;font-size:11.5px;color:var(--dsw-alias-label-secondary);background:transparent;border:1px solid var(--dsw-alias-border-l2);border-radius:999px;cursor:pointer;white-space:nowrap;font-family:inherit}" +
@@ -217,10 +218,22 @@ window.__ModuleLoader__.load({
         return function () {};
       }
       var container = document.createElement("div");
-      container.dataset.dshProjectsList = "";
+      container.dataset.dshEasyProjectsList = "";
       var root;
       var mounted = false;
       var region;
+
+      // Below ~180px the sidebar is a compact icon rail: yield to the native
+      // rail (hide our list, un-hide native content) until it widens again.
+      function syncNarrow(width) {
+        var narrow = width < 180;
+        if (narrow) document.documentElement.setAttribute("data-dsh-projects-narrow", "");
+        else document.documentElement.removeAttribute("data-dsh-projects-narrow");
+      }
+      var resizeObserver = new ResizeObserver(function (entries) {
+        var entry = entries[entries.length - 1];
+        syncNarrow(entry ? entry.contentRect.width : 0);
+      });
 
       function ensure() {
         if (mounted) {
@@ -238,6 +251,9 @@ window.__ModuleLoader__.load({
         root = createRoot(container);
         root.render(h(SessionListView, { api: api, sessions: sessions, workspaces: workspaces }));
         mounted = true;
+        resizeObserver.disconnect();
+        resizeObserver.observe(region);
+        syncNarrow(region.clientWidth);
       }
 
       var waitObserver = new MutationObserver(function () {
@@ -248,6 +264,8 @@ window.__ModuleLoader__.load({
 
       return function () {
         waitObserver.disconnect();
+        resizeObserver.disconnect();
+        document.documentElement.removeAttribute("data-dsh-projects-narrow");
         if (root) root.unmount();
         root = undefined;
         container.remove();
